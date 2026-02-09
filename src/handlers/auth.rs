@@ -20,10 +20,14 @@ const SESSION_COOKIE: &str = "gigachat_session";
 // ---------------------------------------------------------------------------
 
 /// Write the user-id into a cookie so subsequent requests are authenticated.
+/// Secure + SameSite=None are required for cross-origin deployments
+/// (e.g. frontend on Vercel, backend on Render).
 pub fn set_session(cookies: &Cookies, user_id: Uuid) {
     let mut cookie = Cookie::new(SESSION_COOKIE, user_id.to_string());
     cookie.set_path("/");
     cookie.set_http_only(true);
+    cookie.set_secure(true);
+    cookie.set_same_site(tower_cookies::cookie::SameSite::None);
     cookies.add(cookie);
 }
 
@@ -307,6 +311,8 @@ pub async fn logout_handler(cookies: Cookies) -> impl IntoResponse {
     let mut cookie = Cookie::new(SESSION_COOKIE, "");
     cookie.set_path("/");
     cookie.set_http_only(true);
+    cookie.set_secure(true);
+    cookie.set_same_site(tower_cookies::cookie::SameSite::None);
     cookie.set_max_age(Some(tower_cookies::cookie::time::Duration::ZERO));
     cookies.add(cookie);
 

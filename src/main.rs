@@ -10,7 +10,7 @@ mod models;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use axum::http::{HeaderName, Method};
+use axum::http::{HeaderName, HeaderValue, Method};
 use axum::{
     routing::{get, post},
     Router,
@@ -40,6 +40,35 @@ fn create_supabase_client() -> SupabaseClient {
     let url = std::env::var("SUPABASE_URL").expect("SUPABASE_URL must be set in .env");
     let key = std::env::var("SUPABASE_KEY").expect("SUPABASE_KEY must be set in .env");
     SupabaseClient::new(url, key).expect("Failed to create Supabase client")
+}
+
+// ---------------------------------------------------------------------------
+// Build the list of allowed origins from .env
+// ---------------------------------------------------------------------------
+
+fn build_allowed_origins() -> Vec<HeaderValue> {
+    let mut origins: Vec<HeaderValue> = Vec::new();
+
+    // Read FRONTEND_URL from .env — this is the only origin we allow.
+    // e.g. FRONTEND_URL=https://gigachat.vercel.app
+    let frontend_url = std::env::var("FRONTEND_URL").expect("FRONTEND_URL must be set in .env");
+    let url = frontend_url.trim().trim_end_matches('/').to_string();
+
+    if url.is_empty() {
+        panic!("FRONTEND_URL is set but empty — provide your Vercel URL");
+    }
+
+    match url.parse::<HeaderValue>() {
+        Ok(val) => {
+            println!("CORS: allowing FRONTEND_URL = {}", url);
+            origins.push(val);
+        }
+        Err(e) => {
+            panic!("FRONTEND_URL '{}' is not a valid origin: {}", url, e);
+        }
+    }
+
+    origins
 }
 
 // ---------------------------------------------------------------------------
@@ -86,19 +115,11 @@ async fn main() {
         );
     }
 
-    // CORS – configured to allow credentials (cookies) from the same origin.
-    // When serving the frontend from the same server, CORS is not strictly
-    // needed, but we keep it for flexibility (e.g. if someone runs a separate
-    // dev server on another port).
+    // CORS – allow credentials (cookies) from dev origins + FRONTEND_URL from .env.
+    let allowed_origins = build_allowed_origins();
+
     let cors = CorsLayer::new()
-        .allow_origin(AllowOrigin::list([
-            "http://localhost:3000".parse().unwrap(),
-            "http://127.0.0.1:3000".parse().unwrap(),
-            "http://localhost:5500".parse().unwrap(), // VS Code Live Server
-            "http://127.0.0.1:5500".parse().unwrap(),
-            "http://localhost:8080".parse().unwrap(), // common dev server
-            "http://127.0.0.1:8080".parse().unwrap(),
-        ]))
+        .allow_origin(AllowOrigin::list(allowed_origins))
         .allow_methods([
             Method::GET,
             Method::POST,
