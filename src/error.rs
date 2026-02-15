@@ -34,7 +34,7 @@ impl std::fmt::Display for ApiError {
             ApiError::Database(msg) => write!(f, "Database error: {}", msg),
             ApiError::InvalidCredentials => write!(f, "Invalid username or password"),
             ApiError::Unauthorized => write!(f, "You must be logged in to do that"),
-            ApiError::BadRequest(msg) => write!(f, "Bad request: {}", msg),
+            ApiError::BadRequest(msg) => write!(f, "Error: {}", msg),
             ApiError::NotFound(msg) => write!(f, "Not found: {}", msg),
             ApiError::Internal(msg) => write!(f, "Internal error: {}", msg),
         }
